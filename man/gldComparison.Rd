@@ -4,7 +4,8 @@
 \alias{gldComparison}
 \title{Compare if two GLDs belongs to the same distribution}
 \usage{
-gldComparison(L1, L2)
+gldComparison(L1, L2, param = "fmkl", no.test = 1000, len = floor(0.9 *
+  no.test), alpha = 0.05)
 }
 \arguments{
 \item{L1}{Lambda values of the first GLD.}
@@ -19,4 +20,7 @@ L1 = c(0, 2, 0.25, 1.5)
 L2 = c(0, 2, 0.3, 1.75)
 D <- gldComparison(L1, L2)
 
+}
+\author{
+Noel Moreno Lemus
 }
