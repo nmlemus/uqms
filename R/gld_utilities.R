@@ -70,6 +70,54 @@ gldComparison <- function(L1, L2, param = "fmkl", no.test = 1000, len = floor(0.
     return(result.o)
 }
 
+#' Compare if two GLDs belongs to the same distribution based in its KL.dist
+#'
+#' This function return the KL.dist of two GLDs.
+#' @author Noel Moreno Lemus
+#' @param L1 Lambda values of the first GLD.
+#' @param L2 Lambda values of the second GLD.
+#' @examples
+#' L1 = c(0, 2, 0.25, 1.5)
+#' L2 = c(0, 2, 0.3, 1.75)
+#' D <- gldComparisonKL(L1, L2)
+#'
+#' @export
+#'
+
+gldComparisonKL <- function(L1, L2, param = "fmkl", no.test = 1000, len = floor(0.9*no.test), alpha = 0.05) {
+  sample1 <- rgl(len * no.test, L1[1], L1[2], L1[3], L1[4], param)
+  sample2 <- rgl(len * no.test, L2[1], L2[2], L2[3], L2[4], param)
+
+  # test and sample.fitted to use the same names used in fun.diag.ks.g
+  # test <- split(sample1, 1:no.test)
+  # sample.fitted <- split(sample2, 1:no.test)
+
+  D = KL.dist(sample1, sample2, k=5)
+  a = 0
+  count = 0
+  for (i in 1:5) {
+    if (D[i] != Inf && !is.nan(D[i])){
+      a = a + D[i]
+      count = count + 1
+    }
+  }
+  a = a/count
+
+  return(a)
+}
+
+#' Function to be used as a distance function in clustering algoritms
+#'
+#' This function return the distances between all the centroids and the elements of the dataset, using a KS-test as a measure of the distance.
+#' @author Noel Moreno Lemus
+#' @param x dataset.
+#' @param centers the centroids to be analized.
+#' @examples
+#' TODO
+#'
+#' @export
+#'
+
 distGLDComparison <- function(x, centers) {
   if (ncol(x) != ncol(centers))
     stop(sQuote("x")," and ", sQuote("centers")," must have the same number of columns")
@@ -78,16 +126,61 @@ distGLDComparison <- function(x, centers) {
   alpha = 0.05
   no.test = 1000
   len = floor(0.9*no.test)
-  sample1 <- rgl(len * no.test, 0, 2, x[1], x[2], "fmkl")
-  test <- split(sample1, 1:no.test)
 
   for (k in 1:nrow(centers)) {
     sample2 <- rgl(len * no.test, 0, 2, centers[k, 1], centers[k, 2], "fmkl")
     sample.fitted <- split(sample2, 1:no.test)
-    result.o <- sum(sapply(1:no.test, function(i, test, sample.fitted)
-    ks.gof(test[[i]], sample.fitted[[i]])$p.value, test, sample.fitted) > alpha)
+    for (j in 1:nrow(x)) {
+      sample1 <- rgl(len * no.test, 0, 2, x[j, 1], x[j, 2], "fmkl")
+      test <- split(sample1, 1:no.test)
+      result.o <- sum(sapply(1:no.test, function(i, test, sample.fitted)
+        ks.gof(test[[i]], sample.fitted[[i]])$p.value, test, sample.fitted) > alpha)
 
-    z[, k] <- (1000 - result.o)
+      z[j, k] <- (1000 - result.o)
+    }
+  }
+  z
+}
+
+#' Function to be used as a distance function in clustering algoritms
+#'
+#' This function return the distances between all the centroids and the elements of the dataset, using KL-divergence as a measure of the distance.
+#' @author Noel Moreno Lemus
+#' @param x dataset.
+#' @param centers the centroids to be analized.
+#' @examples
+#' TODO
+#'
+#' @export
+#'
+distGLDComparisonKL <- function(x, centers) {
+  if (ncol(x) != ncol(centers))
+    stop(sQuote("x")," and ", sQuote("centers")," must have the same number of columns")
+  z <- matrix(0, nrow = nrow(x), ncol = nrow(centers))
+
+  alpha = 0.05
+  no.test = 1000
+  len = floor(0.9*no.test)
+
+  for (k in 1:nrow(centers)) {
+    sample2 <- rgl(no.test, 0, 2, centers[k, 1], centers[k, 2], "fmkl")
+    sample.fitted <- split(sample2, 1:no.test)
+    for (j in 1:nrow(x)) {
+      sample1 <- rgl(no.test, 0, 2, x[j, 1], x[j, 2], "fmkl")
+      test <- split(sample1, 1:no.test)
+      D = mean(KL.dist(sample1, sample2, k=2))
+      z[j, k] <- D
+    }
+  }
+  z
+}
+
+distEuclideanM <- function (x, centers){
+  if (ncol(x) != ncol(centers))
+    stop(sQuote("x"), " and ", sQuote("centers"), " must have the same number of columns")
+  z <- matrix(0, nrow = nrow(x), ncol = nrow(centers))
+  for (k in 1:nrow(centers)) {
+    z[, k] <- sqrt(colSums((t(x) - centers[k, ])^2))
   }
   z
 }
@@ -123,6 +216,37 @@ gldClusterComparison <- function(cluster_number, n, centroid) {
   as.numeric(lista)
 }
 
+gldClusterComparisonKL <- function(cluster_number, n, centroid) {
+  library("FNN")
+  lista = list()
+  count = 1;
+  i = 1;
+  dim_clusters = dim(clusters)
+  for(i in 1:dim_clusters[1]){
+    for(j in 1:dim_clusters[2]){
+      if (clusters[i,j]==cluster_number && count <= n){
+        sample1 = rgl(10000, centroid)
+        sample2 = rgl(10000, c(0, lambda2[i,j], lambda3[i,j], lambda4[i,j]))
+        D = mean(KL.dist(sample1, sample2))
+        #D = gldComparison(centroid, c(0, lambda2[i,j], lambda3[i,j], lambda4[i,j]))
+        lista[[length(lista)+1]] = D;
+        count = count + 1;
+      }
+    }
+  }
+  as.numeric(lista)
+}
+
+klDivergenceInClusters <- function(centers, no_clusters){
+  kld = array(0, dim = c(no_clusters))
+  for (i in 1:15) {
+    D = gldClusterComparisonKL(i, 100, c(0, cl$cl$centers[i,]))
+    kld[i] = mean(D[!is.inf(D)])
+  }
+  plot(kld, pch = 16, col = c(seq(no_clusters)), main = "KL-divergence inside each Cluster", xlab = "Cluster Number", ylab = "KL-divergence")
+  lines(kld)
+}
+
 
 #' Clustering of the GLDs in function of its l2, l3 and l4 values
 #'
@@ -137,7 +261,7 @@ gldClusterComparison <- function(cluster_number, n, centroid) {
 #'
 #' @export
 #'
-gldClustering <- function(lambdas, no_clusters){
+gldClustering <- function(lambdas, no_clusters, l234 = TRUE){
   lambda1 = lambdas[,,1]
   lambda2 = lambdas[,,2]
   lambda3 = lambdas[,,3]
@@ -148,7 +272,12 @@ gldClustering <- function(lambdas, no_clusters){
   dimTotal = dimension[1]*dimension[2]
 
   lambdas34 = array(0, dim = c(dimTotal, 6))
-  x = array(0, dim = c(dimTotal, 3))
+  if (l234){
+    x = array(0, dim = c(dimTotal, 3))
+  } else {
+    x = array(0, dim = c(dimTotal, 2))
+  }
+
 
   count = 0;
   for(i in 1:dimension[1]){
@@ -162,9 +291,15 @@ gldClustering <- function(lambdas, no_clusters){
       lambdas34[count,5] = lambda3[i, j];
       lambdas34[count,6] = lambda4[i, j];
       #x[count,1] = lambda1[i, j];
-      x[count,1] = lambda2[i, j];
-      x[count,2] = lambda3[i, j];
-      x[count,3] = lambda4[i, j];
+      if (l234){
+        x[count,1] = lambda2[i, j];
+        x[count,2] = lambda3[i, j];
+        x[count,3] = lambda4[i, j];
+      } else {
+        x[count,1] = lambda3[i, j];
+        x[count,2] = lambda4[i, j];
+      }
+
     }
   }
 
@@ -178,10 +313,53 @@ gldClustering <- function(lambdas, no_clusters){
 
   image_display(clusters)
 
-  results = list("clusters" = clusters, "x" = x)
+  results = list("clusters" = clusters, "x" = x, "cl" = cl)
   return(results)
 }
 
+gldClustering1D <- function(lambdas, no_clusters, l234 = TRUE){
+  lambda1 = lambdas[,,1]
+  lambda2 = lambdas[,,2]
+  lambda3 = lambdas[,,3]
+  lambda4 = lambdas[,,4]
+
+  dimension = length(lambda1)
+
+  dimTotal = dimension
+
+
+  if (l234){
+    x = array(0, dim = c(dimTotal, 3))
+  } else {
+    x = array(0, dim = c(dimTotal, 2))
+  }
+
+
+  count = 0;
+  for(i in 1:dimension){
+
+      count = count + 1;
+      #print(count)
+      #x[count,1] = lambda1[i, j];
+      if (l234){
+        x[count,1] = lambda2[i];
+        x[count,2] = lambda3[i];
+        x[count,3] = lambda4[i];
+      } else {
+        x[count,1] = lambda3[i];
+        x[count,2] = lambda4[i];
+      }
+
+
+  }
+
+  cl <- kmeans(x, no_clusters)
+
+  #cl <- dbscan(x, eps = 0.5)
+
+  results = list("clusters" = cl, "x" = x)
+  return(results)
+}
 
 #' Plot the clusters in l3-l4 space.
 #'
@@ -198,7 +376,7 @@ gldClustering <- function(lambdas, no_clusters){
 #'
 gldClustersL3L4 <- function (clusters, x) {
   library(latex2exp)
-  plot(x[,2], x[,3], type = "n", xlab = TeX('$\\lambda_{3}'), ylab = TeX('$\\lambda_{4}'), main = TeX('Clusters in $\\lambda_{3}-\\lambda_{4}'))  # setting up coord. system
+  plot(lambda3, lambda4, type = "n", xlab = TeX('$\\lambda_{3}'), ylab = TeX('$\\lambda_{4}'), main = TeX('Clusters in $\\lambda_{3}-\\lambda_{4}'))  # setting up coord. system
 
   no_clusters = max(clusters)
 
@@ -209,4 +387,15 @@ gldClustersL3L4 <- function (clusters, x) {
     #legend_list[[length(legend_list)+1]] = paste("Cluster ", i)
   }
   #legend("right", 95, legend_list, col=c(1:no_clusters), lty=1, cex=0.8)
+}
+
+gldClustersL2L3L4 <- function(clusters, x){
+  library("plotly", lib.loc="~/R/x86_64-pc-linux-gnu-library/3.4")
+  a = data.frame(x[,1], x[,2], x[,3])
+
+  p <- plot_ly(a, x = a$x...1., y = a$x...2., z = a$x...3., color = clusters, marker = list(size = 2, color = r$cl$cluster, width = 1), mode = 'markers') %>%
+    layout(title = 'Lambda 2, 3 and 4',
+           yaxis = list(title = 'lambda_3'),
+           xaxis = list(title = 'lambda_2'))
+  p
 }

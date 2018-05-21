@@ -4,7 +4,7 @@
 \alias{gldClustering}
 \title{Clustering of the GLDs in function of its l2, l3 and l4 values}
 \usage{
-gldClustering(lambdas, no_clusters)
+gldClustering(lambdas, no_clusters, l234 = TRUE)
 }
 \arguments{
 \item{lambdas}{A matrix of n x m x 4 of all the lambda values.}

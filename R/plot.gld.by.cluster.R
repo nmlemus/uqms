@@ -6,7 +6,7 @@ plot.gld.by.cluster <- function(cluster_number, n){
   i = 1;
 
   dim_clusters = dim(clusters)
-  
+
   for(i in 1:dim_clusters[1]){
     for(j in 1:dim_clusters[2]){
       if (clusters[i,j]==cluster_number && count < n){
@@ -39,7 +39,7 @@ plot.gld.by.cluster2 <- function(cluster_number, n){
   i = 1;
 
   dim_clusters = dim(clusters)
-  
+
   for(i in 1:dim_clusters[1]){
     for(j in 1:dim_clusters[2]){
       if (clusters[i,j]==cluster_number && count < n){
@@ -70,9 +70,9 @@ plot.gld.by.cluster2 <- function(cluster_number, n){
 }
 
 plot.clusters.l3l4 <- function(cluster_number, color) {
-  
+
   dim_clusters = dim(clusters)
-  
+
   for(i in 1:dim_clusters[1]){
     for(j in 1:dim_clusters[2]){
       if (clusters[i,j]==cluster_number){
